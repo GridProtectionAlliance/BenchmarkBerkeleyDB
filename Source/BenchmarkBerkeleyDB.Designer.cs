@@ -43,9 +43,8 @@
             this.textBoxMessageOutput = new System.Windows.Forms.TextBox();
             this.buttonGo = new System.Windows.Forms.Button();
             this.groupBoxOptions = new System.Windows.Forms.GroupBox();
-            this.maskedTextBoxSampleCountWindow = new System.Windows.Forms.MaskedTextBox();
+            this.checkboxWriteToOpenHistorian = new System.Windows.Forms.CheckBox();
             this.checkBoxUseUTCTime = new System.Windows.Forms.CheckBox();
-            this.label1 = new System.Windows.Forms.Label();
             this.buttonBrowse = new System.Windows.Forms.Button();
             this.textBoxDestination = new System.Windows.Forms.TextBox();
             this.labelDestination = new System.Windows.Forms.Label();
@@ -234,9 +233,8 @@
             // 
             this.groupBoxOptions.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.groupBoxOptions.Controls.Add(this.maskedTextBoxSampleCountWindow);
+            this.groupBoxOptions.Controls.Add(this.checkboxWriteToOpenHistorian);
             this.groupBoxOptions.Controls.Add(this.checkBoxUseUTCTime);
-            this.groupBoxOptions.Controls.Add(this.label1);
             this.groupBoxOptions.Controls.Add(this.buttonBrowse);
             this.groupBoxOptions.Controls.Add(this.textBoxDestination);
             this.groupBoxOptions.Controls.Add(this.labelDestination);
@@ -264,15 +262,15 @@
             this.groupBoxOptions.TabStop = false;
             this.groupBoxOptions.Text = "&Options";
             // 
-            // maskedTextBoxSampleCountWindow
+            // checkboxWriteToOpenHistorian
             // 
-            this.maskedTextBoxSampleCountWindow.Location = new System.Drawing.Point(168, 170);
-            this.maskedTextBoxSampleCountWindow.Mask = "00000";
-            this.maskedTextBoxSampleCountWindow.Name = "maskedTextBoxSampleCountWindow";
-            this.maskedTextBoxSampleCountWindow.Size = new System.Drawing.Size(100, 20);
-            this.maskedTextBoxSampleCountWindow.TabIndex = 21;
-            this.maskedTextBoxSampleCountWindow.Text = "60";
-            this.maskedTextBoxSampleCountWindow.TextChanged += new System.EventHandler(this.FormElementChanged);
+            this.checkboxWriteToOpenHistorian.AutoSize = true;
+            this.checkboxWriteToOpenHistorian.Location = new System.Drawing.Point(10, 169);
+            this.checkboxWriteToOpenHistorian.Name = "checkboxWriteToOpenHistorian";
+            this.checkboxWriteToOpenHistorian.Size = new System.Drawing.Size(131, 17);
+            this.checkboxWriteToOpenHistorian.TabIndex = 21;
+            this.checkboxWriteToOpenHistorian.Text = "Write to openHistorian";
+            this.checkboxWriteToOpenHistorian.UseVisualStyleBackColor = true;
             // 
             // checkBoxUseUTCTime
             // 
@@ -284,15 +282,6 @@
             this.checkBoxUseUTCTime.Text = "Use UTC Time";
             this.checkBoxUseUTCTime.UseVisualStyleBackColor = true;
             this.checkBoxUseUTCTime.CheckedChanged += new System.EventHandler(this.FormElementChanged);
-            // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(5, 172);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(166, 13);
-            this.label1.TabIndex = 18;
-            this.label1.Text = "Sample Count Window (Seconds)";
             // 
             // buttonBrowse
             // 
@@ -512,7 +501,7 @@
             this.MinimumSize = new System.Drawing.Size(675, 600);
             this.Name = "BenchmarkBerkeleyDB";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "openHistorian Data Completeness Reporter Utility";
+            this.Text = "Benchmark Berkeley DB Utility";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.BenchmarkBerkeleyDB_FormClosing);
             this.Load += new System.EventHandler(this.BenchmarkBerkeleyDB_Load);
             this.groupBoxSourceHistorian.ResumeLayout(false);
@@ -556,11 +545,10 @@
         public System.Windows.Forms.MaskedTextBox maskedTextBoxMessageInterval;
         public System.Windows.Forms.CheckBox checkBoxEnableLogging;
         public System.Windows.Forms.TextBox textBoxPointList;
-        private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Button buttonBrowse;
         private System.Windows.Forms.Label labelDestination;
         public System.Windows.Forms.TextBox textBoxDestination;
         public System.Windows.Forms.CheckBox checkBoxUseUTCTime;
-        public System.Windows.Forms.MaskedTextBox maskedTextBoxSampleCountWindow;
+        private System.Windows.Forms.CheckBox checkboxWriteToOpenHistorian;
     }
 }

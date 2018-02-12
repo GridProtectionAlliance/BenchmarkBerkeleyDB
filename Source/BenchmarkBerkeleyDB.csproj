@@ -69,7 +69,7 @@
       <HintPath>Dependencies\GSF\GSF.SortedTreeStore.dll</HintPath>
     </Reference>
     <Reference Include="libdb_dotnet62">
-      <HintPath>..\..\..\..\..\..\Program Files\Oracle\Berkeley DB 12cR1 6.2.32\bin\libdb_dotnet62.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\..\Program Files\Oracle\Berkeley DB 12cR1 6.2.32\bin\libdb_dotnet62.dll</HintPath>
     </Reference>
     <Reference Include="openHistorian.Core, Version=2.2.57.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>

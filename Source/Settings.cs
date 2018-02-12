@@ -170,19 +170,19 @@ namespace BenchmarkBerkeleyDB
         public bool EnableLogging { get; set; }
 
         /// <summary>
-        /// Gets or sets sample count window.
-        /// </summary>
-        [TypeConvertedValueExpression("Form.maskedTextBoxSampleCountWindow.Text")]
-        [Description("Window size, in seconds, over which samples are counted.")]
-        [UserScopedSetting]
-        public int SampleCountWindow { get; set; }
-
-        /// <summary>
         /// Gets or sets selected point list or filter expression for historian read.
         /// </summary>
         [TypeConvertedValueExpression("Form.textBoxDestination.Text")]
         [Description("Path where the reports will be written.")]
         [UserScopedSetting]
         public string Destination { get; set; }
+
+        ///// <summary>
+        ///// Gets or sets whether to write to the openHistorian or Berkeley DB.
+        ///// </summary>
+        //[TypeConvertedValueExpression("Form.checkboxWriteToOpenHistorian.Checked")]
+        //[Description("Write to the openHistorian (instead of a BerkeleyDB.")]
+        //[UserScopedSetting]
+        //public bool WriteToOpenHistorian { get; set; }
     }
 }

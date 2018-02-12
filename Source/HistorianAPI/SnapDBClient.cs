@@ -41,7 +41,7 @@ namespace BenchmarkBerkeleyDB.HistorianAPI
         private readonly HistorianValue m_value;
         private bool m_disposed;
 
-        public SnapDBClient(string hostAddress, int port, string instanceName, DateTime startTime, DateTime endTime, int frameRate, IEnumerable<ulong> pointIDs)
+        public SnapDBClient(string hostAddress, int port, string instanceName, DateTime startTime, DateTime endTime, int frameRate, IEnumerable<ulong> pointIDs, bool openReader = true)
         {
             m_client = new HistorianClient(hostAddress, port);
             m_database = m_client.GetDatabase<HistorianKey, HistorianValue>(instanceName);
@@ -51,7 +51,8 @@ namespace BenchmarkBerkeleyDB.HistorianAPI
             SeekFilterBase<HistorianKey> timeFilter = TimestampSeekFilter.CreateFromRange<HistorianKey>(DataPoint.RoundTimestamp(startTime, frameRate), DataPoint.RoundTimestamp(endTime, frameRate));
             MatchFilterBase<HistorianKey, HistorianValue> pointFilter = PointIdMatchFilter.CreateFromList<HistorianKey, HistorianValue>(pointIDs);
 
-            m_stream = m_database.Read(SortedTreeEngineReaderOptions.Default, timeFilter, pointFilter);
+            if (openReader)
+                m_stream = m_database.Read(SortedTreeEngineReaderOptions.Default, timeFilter, pointFilter);
         }
 
         ~SnapDBClient()
@@ -104,6 +105,16 @@ namespace BenchmarkBerkeleyDB.HistorianAPI
             point.Flags = m_value.Value3;
 
             return true;
+        }
+
+        public void WritePoint(DataPoint point)
+        {
+            m_key.Timestamp = point.Timestamp;
+            m_key.PointID = point.PointID;
+            m_value.Value1 = point.Value;
+            m_value.Value3 = point.Flags;
+
+            m_database.Write(m_key, m_value);
         }
     }
 }

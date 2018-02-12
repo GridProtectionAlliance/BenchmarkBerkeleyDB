@@ -280,7 +280,9 @@ namespace BenchmarkBerkeleyDB
                 ShowUpdateMessage("*** Filter Expression Processing Complete ***");
                 ShowUpdateMessage($"Total filter expression processing time {operationTime.ToElapsedTimeString(3)}...");
 
-                using (Algorithm algorithm = new Algorithm(records))
+                string destination = m_settings.Destination;
+                bool writeToOpenHistorian = true; 
+                using (Algorithm algorithm = new Algorithm(records, writeToOpenHistorian, destination))
                 {
                     algorithm.ShowMessage = ShowUpdateMessage;
                     algorithm.MessageInterval = m_settings.MessageInterval;
@@ -292,6 +294,7 @@ namespace BenchmarkBerkeleyDB
                     operationStartTime = DateTime.UtcNow.Ticks;
 
                     using (SnapDBClient historianClient = new SnapDBClient(m_settings.HostAddress, m_settings.DataPort, m_settings.InstanceName, startTime, endTime, m_settings.FrameRate, pointIDList))
+                    using (SnapDBClient historianWriteClient = new SnapDBClient(m_settings.HostAddress, 38403, "TEST", startTime, endTime, m_settings.FrameRate, pointIDList, false))
                     {
                         // Scan to first record
                         if (!historianClient.ReadNext(point))
@@ -299,9 +302,11 @@ namespace BenchmarkBerkeleyDB
 
                         ulong currentTimestamp;
                         receivedPoints++;
+                        algorithm.HistorianClient = historianWriteClient;
 
                         while (!m_formClosing)
                         {
+
                             int timeComparison;
                             bool readSuccess = true;
 
