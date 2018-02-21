@@ -15,13 +15,14 @@ using System.Threading.Tasks;
 using System.Threading;
 using GSF.Snap.Services;
 using openHistorian.Snap;
+using openHistorian.Net;
 
 namespace BenchmarkBerkeleyDB
 {
     /// <summary>
     /// Defines algorithm to be executed during historian read.
     /// </summary>
-    public class Algorithm : IDisposable
+    public class DataWriter : IDisposable
     {
         #region [ Members ]
 
@@ -34,8 +35,8 @@ namespace BenchmarkBerkeleyDB
         private BTreeDatabaseConfig m_berkeleyDbCfg;
         private BTreeDatabase m_berkeleyDb;
 
-        private bool m_writeToOpenHistorian;
-        private List<DataPoint[]> m_ohData;
+        private Settings m_settings;
+
         // Algorithm processing statistic fields
         private long m_processedDataBlocks;
 
@@ -45,38 +46,51 @@ namespace BenchmarkBerkeleyDB
         private DatabaseEntry m_berkeleyDbValue;
         private KeyValuePair<DatabaseEntry, DatabaseEntry>[] m_berkeleyDbPointList;
 
+        private HistorianServer m_historianServer;
+        private HistorianIArchive m_historianArchive;
+        private HistorianKey m_key;
+        private HistorianValue m_value;
+
         #endregion
 
         #region [ Constructors ]
 
-        public Algorithm(List<MetadataRecord> metadata, bool writeToOpenHistorian, string destination)
+        public DataWriter(Settings settings, int pointCount)
         {
-            Metadata = metadata;
-
-            m_writeToOpenHistorian = writeToOpenHistorian;
-
-            if (m_writeToOpenHistorian) // Initialize OH objects
+            m_settings = settings;
+            if (m_settings.WriteToOpenHistorian) // Initialize OH instance
             {
-                m_ohData = new List<DataPoint[]>();
+                HistorianServerDatabaseConfig archiveInfo = new HistorianServerDatabaseConfig(settings.HistorianName, settings.HistorianArchive, true)
+                {
+                    TargetFileSize = (long)(1 * SI.Giga), // Just because
+                    DirectoryMethod = ArchiveDirectoryMethod.TopDirectoryOnly,
+                    StagingCount = 3,
+                    DiskFlushInterval = 1000, // Smallest available time interval
+                    CacheFlushInterval = 1000 // Largest available value
+                };
+
+                m_historianServer = new HistorianServer(archiveInfo, 38406);
+                m_historianArchive = m_historianServer[settings.HistorianName];
+                m_key = new HistorianKey();
+                m_value = new HistorianValue();
             }
-            else // Initialize BDB objects
+            else if (m_settings.WriteToBerkeleyDB) // Initialize BDB instance
             {
                 m_berkeleyDbCfg = new BTreeDatabaseConfig()
                 {
-                    BTreeCompare = KeyComparison,
+                    BTreeCompare = BerkeleyDBKeyComparison,
                     Creation = CreatePolicy.IF_NEEDED
                 };
-                m_berkeleyDb = BTreeDatabase.Open(destination, m_berkeleyDbCfg);
+                m_berkeleyDb = BTreeDatabase.Open(Path.Combine(settings.HistorianArchive, settings.HistorianName), m_berkeleyDbCfg);
 
                 m_berkeleyDbKey = new DatabaseEntry();
                 m_berkeleyDbValue = new DatabaseEntry();
 
-                m_berkeleyDbPointList = new KeyValuePair<DatabaseEntry, DatabaseEntry>[metadata.Count];
+                m_berkeleyDbPointList = new KeyValuePair<DatabaseEntry, DatabaseEntry>[pointCount];
                 Parallel.For(0, m_berkeleyDbPointList.Length, (i) => m_berkeleyDbPointList[i] = new KeyValuePair<DatabaseEntry, DatabaseEntry>(
                                                                                 new DatabaseEntry(),
                                                                                 new DatabaseEntry()));
             }
-
         }
 
         #endregion
@@ -114,15 +128,12 @@ namespace BenchmarkBerkeleyDB
             }
         }
 
-        public SnapDBClient HistorianClient { get; set; }
-        public ClientDatabaseBase<HistorianKey, HistorianValue> HistorianDB { get; set; }
-
         #endregion
 
         #region [ Methods ]
 
         /// <summary>
-        /// Releases all the resources used by the <see cref="Algorithm"/> object.
+        /// Releases all the resources used by the <see cref="DataWriter"/> object.
         /// </summary>
         public void Dispose()
         {
@@ -131,7 +142,7 @@ namespace BenchmarkBerkeleyDB
         }
 
         /// <summary>
-        /// Releases the unmanaged resources used by the <see cref="Algorithm"/> object and optionally releases the managed resources.
+        /// Releases the unmanaged resources used by the <see cref="DataWriter"/> object and optionally releases the managed resources.
         /// </summary>
         /// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
         protected virtual void Dispose(bool disposing)
@@ -142,7 +153,11 @@ namespace BenchmarkBerkeleyDB
                 {
                     if (disposing)
                     {
-                        m_berkeleyDb.Close();
+                        if (m_settings.WriteToOpenHistorian)
+                            m_historianServer.Dispose();
+
+                        else if (m_settings.WriteToBerkeleyDB)
+                            m_berkeleyDb.Close();
                     }
                 }
                 finally
@@ -153,37 +168,27 @@ namespace BenchmarkBerkeleyDB
         }
 
         /// <summary>
-        /// Default data processing entry point for <see cref="Algorithm"/>.
+        /// Default data processing entry point for <see cref="DataWriter"/>.
         /// </summary>
         /// <param name="timestamp">Timestamp of <paramref name="dataBlock"/>.</param>
         /// <param name="dataBlock">Points values read at current timestamp.</param>
-        public void Execute(DateTime timestamp, DataPoint[] dataBlock)
+        public void Write(DateTime timestamp, DataPoint[] dataBlock)
         {
-            if (m_writeToOpenHistorian)
+            if (m_settings.WriteToOpenHistorian) // Write to openHistorian
             {
-                // Write each DataPoint in datablock one by one *Slow and basic
                 foreach (DataPoint point in dataBlock)
                 {
-                    HistorianClient.WritePoint(point);
+                    m_key.Timestamp = point.Timestamp;
+                    m_key.PointID = point.PointID;
+
+                    m_value.Value1 = point.Value;
+                    m_value.Value3 = point.Flags;
+
+                    m_historianArchive.Write(m_key, m_value);
                 }
-
-                //// Kick off a new thread to write each datablock one by one *Even slower
-                //Thread thread = new Thread(() =>
-                //{
-                //    foreach (DataPoint point in dataBlock)
-                //    {
-                //        HistorianClient.WritePoint(point);
-                //    }
-                //})
-                //{
-                //    IsBackground = true
-                //};
-
-                //thread.Start();
-                //thread.Join();
             }
 
-            else // Write to Berkeley DB
+            else if (m_settings.WriteToBerkeleyDB) // Write to Berkeley DB
             {
                 //// Create a new pointList each time *slow
                 //KeyValuePair<DatabaseEntry, DatabaseEntry>[] pointList = new KeyValuePair<DatabaseEntry, DatabaseEntry>[dataBlock.Length];
@@ -204,18 +209,17 @@ namespace BenchmarkBerkeleyDB
                 //    m_db.Put(m_key, m_value);
                 //}
 
-
-                // Bulk writes using the same pointList *fastest method so far
+                // Bulk writes using the same pointList *fastest method found so far*
                 Parallel.For(0, dataBlock.Length, (i) =>
                 {
                     m_berkeleyDbPointList[i].Key.Data = BitConverter.GetBytes(timestamp.Ticks).Concat(BitConverter.GetBytes(dataBlock[i].PointID)).ToArray();
                     m_berkeleyDbPointList[i].Value.Data = BitConverter.GetBytes(dataBlock[i].Value);
                 });
 
-
                 m_berkeleyDb.Put(new MultipleKeyDatabaseEntry(m_berkeleyDbPointList.Take(dataBlock.Length), false));
             }
         }
+
 
         /// <summary>
         /// Read back the database created by the algorithm and time the operation
@@ -232,7 +236,7 @@ namespace BenchmarkBerkeleyDB
             while (cursor.MoveNextMultipleKey())
             {
                 MultipleKeyDatabaseEntry pairs = cursor.CurrentMultipleKey;
-                
+
                 foreach (KeyValuePair<DatabaseEntry, DatabaseEntry> p in pairs)
                 {
                     value = BitConverter.ToUInt64(p.Value.Data, 0);
@@ -245,7 +249,13 @@ namespace BenchmarkBerkeleyDB
             ShowMessage($"{count} points read in {seconds} seconds. Averaging {(int)Math.Round(count / seconds)} points per second.");
         }
 
-        int KeyComparison(DatabaseEntry key1, DatabaseEntry key2)
+        /// <summary>
+        /// The function BerkeleyDB will use to compare keys in a BTree database
+        /// </summary>
+        /// <param name="key1"></param>
+        /// <param name="key2"></param>
+        /// <returns></returns>
+        int BerkeleyDBKeyComparison(DatabaseEntry key1, DatabaseEntry key2)
         {
             long timestamp1 = BitConverter.ToInt64(key1.Data, 0);
             long timestamp2 = BitConverter.ToInt64(key2.Data, 0);

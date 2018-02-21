@@ -27,6 +27,7 @@ using System.Configuration;
 using ExpressionEvaluator;
 using GSF.ComponentModel;
 using GSF.Configuration;
+using static BenchmarkBerkeleyDB.BenchmarkBerkeleyDB;
 
 namespace BenchmarkBerkeleyDB
 {
@@ -46,6 +47,10 @@ namespace BenchmarkBerkeleyDB
     /// </remarks>
     public sealed class Settings : CategorizedSettingsBase<Settings>
     {
+        #region [ Members ]
+
+        #endregion
+
         /// <summary>
         /// Creates a new <see cref="Settings"/> instance.
         /// </summary>
@@ -56,6 +61,8 @@ namespace BenchmarkBerkeleyDB
         public Settings(TypeRegistry typeRegistry) : base("systemSettings", typeRegistry)
         {
         }
+
+        #region [ Source Historian Settings ]
 
         /// <summary>
         /// Gets or sets host address for historian connection.
@@ -89,37 +96,9 @@ namespace BenchmarkBerkeleyDB
         [UserScopedSetting]
         public string InstanceName { get; set; }
 
-        /// <summary>
-        /// Gets or sets frame-rate, in frames per second, used to estimate total data for timespan.
-        /// </summary>
-        [TypeConvertedValueExpression("Form.maskedTextBoxFrameRate.Text")]
-        [Description("Frame rate, in frames per second, used to estimate total data for timespan.")]
-        [UserScopedSetting]
-        public int FrameRate { get; set; }
+        #endregion
 
-        /// <summary>
-        /// Gets or sets meta-data retriever timeout, in milliseconds.
-        /// </summary>
-        [UserScopedSetting]
-        [Description("Meta-data retriever timeout, in milliseconds.")]
-        public int MetadataTimeout { get; set; }
-
-        /// <summary>
-        /// Gets or sets meta-data retriever timeout, in seconds.
-        /// </summary>
-        [TypeConvertedValueExpression("Form.maskedTextBoxMetadataTimeout.Text")]
-        [SerializeSetting(false)] // <-- Do not synchronize to config file
-        public int MetadataTimeoutSeconds
-        {
-            get
-            {
-                return MetadataTimeout / 1000;
-            }
-            set
-            {
-                MetadataTimeout = value * 1000;
-            }
-        }
+        #region [ Historian Settings ]
 
         /// <summary>
         /// Gets or sets selected start time range for historian read.
@@ -154,6 +133,42 @@ namespace BenchmarkBerkeleyDB
         public string PointList { get; set; }
 
         /// <summary>
+        /// Gets or sets frame-rate, in frames per second, used to estimate total data for timespan.
+        /// </summary>
+        [TypeConvertedValueExpression("Form.maskedTextBoxFrameRate.Text")]
+        [Description("Frame rate, in frames per second, used to estimate total data for timespan.")]
+        [UserScopedSetting]
+        public int FrameRate { get; set; }
+
+        /// <summary>
+        /// Gets or sets meta-data retriever timeout, in milliseconds.
+        /// </summary>
+        [UserScopedSetting]
+        [Description("Meta-data retriever timeout, in milliseconds.")]
+        public int MetadataTimeout { get; set; }
+
+        /// <summary>
+        /// Gets or sets meta-data retriever timeout, in seconds.
+        /// </summary>
+        [TypeConvertedValueExpression("Form.maskedTextBoxMetadataTimeout.Text")]
+        [SerializeSetting(false)] // <-- Do not synchronize to config file
+        public int MetadataTimeoutSeconds
+        {
+            get
+            {
+                return MetadataTimeout / 1000;
+            }
+            set
+            {
+                MetadataTimeout = value * 1000;
+            }
+        }
+
+        #endregion
+
+        #region [ General Settings ]
+
+        /// <summary>
         /// Gets or sets message display interval.
         /// </summary>
         [TypeConvertedValueExpression("Form.maskedTextBoxMessageInterval.Text")]
@@ -169,20 +184,86 @@ namespace BenchmarkBerkeleyDB
         [UserScopedSetting]
         public bool EnableLogging { get; set; }
 
+        #endregion
+
+        #region [ Csv Settings ]
+
         /// <summary>
         /// Gets or sets selected point list or filter expression for historian read.
         /// </summary>
-        [TypeConvertedValueExpression("Form.textBoxDestination.Text")]
+        [TypeConvertedValueExpression("Form.textBoxCsvSource.Text")]
         [Description("Path where the reports will be written.")]
         [UserScopedSetting]
-        public string Destination { get; set; }
+        public string CsvSourcePath { get; set; }
+
+        #endregion
+
+        #region [ Source & Destination Setttings ]
 
         ///// <summary>
         ///// Gets or sets whether to write to the openHistorian or Berkeley DB.
         ///// </summary>
-        //[TypeConvertedValueExpression("Form.checkboxWriteToOpenHistorian.Checked")]
+        //[TypeConvertedValueExpression("(DataSource)Enum.Parse(typeof(DataSource), (string)Form.groupBoxSource.Controls.OfType<RadioButton>().FirstOrDefault().Tag")]
         //[Description("Write to the openHistorian (instead of a BerkeleyDB.")]
         //[UserScopedSetting]
-        //public bool WriteToOpenHistorian { get; set; }
+        //public DataSource Source { get; set; }
+
+        /// <summary>
+        /// Gets or sets selected point list or filter expression for historian read.
+        /// </summary>
+        [TypeConvertedValueExpression("Form.radioButtonSourceHistorian.Checked")]
+        [Description("Path where the reports will be written.")]
+        [UserScopedSetting]
+        public bool ReadFromOpenHistorian { get; set; }
+
+        /// <summary>
+        /// Gets or sets selected point list or filter expression for historian read.
+        /// </summary>
+        [TypeConvertedValueExpression("Form.radioButtonSourceCsv.Checked")]
+        [Description("Path where the reports will be written.")]
+        [UserScopedSetting]
+        public bool ReadFromCsv { get; set; }
+
+        /// <summary>
+        /// Gets or sets selected point list or filter expression for historian read.
+        /// </summary>
+        [TypeConvertedValueExpression("Form.textBoxHistorianArchive.Text")]
+        [Description("Path where the reports will be written.")]
+        [UserScopedSetting]
+        public string HistorianArchive { get; set; }
+
+        /// <summary>
+        /// Gets or sets selected point list or filter expression for historian read.
+        /// </summary>
+        [TypeConvertedValueExpression("Form.textBoxHistorianName.Text")]
+        [Description("Path where the reports will be written.")]
+        [UserScopedSetting]
+        public string HistorianName { get; set; }
+
+        ///// <summary>
+        ///// Gets or sets whether to write to the openHistorian or Berkeley DB.
+        ///// </summary>
+        //[TypeConvertedValueExpression("Form.groupBoxDestination.Controls.OfType<RadioButton>().FirstOrDefault(x => x.Checked).Tag")]
+        //[Description("Write to the openHistorian (instead of a BerkeleyDB.")]
+        //[UserScopedSetting]
+        //public DestinationHistorian Destination { get; set; }
+
+        /// <summary>
+        /// Gets or sets selected point list or filter expression for historian read.
+        /// </summary>
+        [TypeConvertedValueExpression("Form.radioButtonDestinationHistorian.Checked")]
+        [Description("Path where the reports will be written.")]
+        [UserScopedSetting]
+        public bool WriteToOpenHistorian { get; set; }
+
+        /// <summary>
+        /// Gets or sets selected point list or filter expression for historian read.
+        /// </summary>
+        [TypeConvertedValueExpression("Form.radioButtonDestinationBerkeley.Checked")]
+        [Description("Path where the reports will be written.")]
+        [UserScopedSetting]
+        public bool WriteToBerkeleyDB { get; set; }
+
+        #endregion
     }
 }

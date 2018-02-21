@@ -88,13 +88,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Algorithm.cs" />
+    <Compile Include="DataWriter.cs" />
     <Compile Include="BenchmarkBerkeleyDB.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="BenchmarkBerkeleyDB.Designer.cs">
       <DependentUpon>BenchmarkBerkeleyDB.cs</DependentUpon>
     </Compile>
+    <Compile Include="DataReader.cs" />
     <Compile Include="HistorianAPI\DataPoint.cs" />
     <Compile Include="HistorianAPI\Metadata\MetadataRecord.cs" />
     <Compile Include="HistorianAPI\Metadata\MetadataReceiver.cs" />
