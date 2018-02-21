@@ -188,6 +188,7 @@ namespace BenchmarkBerkeleyDB
             if (line != null)
             {
                 string[] values = line.Split(',');
+                CurrentTimestamp = DateTime.Parse(values[0]);
 
                 // Not as fast
                 //float value2;
@@ -203,6 +204,7 @@ namespace BenchmarkBerkeleyDB
                 float value;
                 for (int i = 1; i < values.Length; i++)
                 {
+                    m_dataPoints[i - 1].Timestamp = (ulong)CurrentTimestamp.Ticks;
                     m_dataPoints[i - 1].PointID = m_indexToPointIDLookup[i];
                     m_dataPoints[i - 1].ValueAsSingle = 0;
                     if (float.TryParse(values[i - 1], out value))

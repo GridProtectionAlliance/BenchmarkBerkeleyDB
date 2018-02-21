@@ -282,9 +282,9 @@ namespace BenchmarkBerkeleyDB
             dataReader = new DataReader(m_settings, ShowUpdateMessage, m_log);
             DataPoint[] points = new DataPoint[dataReader.PointCount];
 
-            using (DataWriter algorithm = new DataWriter(m_settings, dataReader.PointCount))
+            using (DataWriter dataWriter = new DataWriter(m_settings, dataReader.PointCount))
             {
-                algorithm.ShowMessage = ShowUpdateMessage;
+                dataWriter.ShowMessage = ShowUpdateMessage;
 
                 ShowUpdateMessage(">>> Starting archive read...");
 
@@ -304,7 +304,7 @@ namespace BenchmarkBerkeleyDB
                     try
                     {
                         // Analyze data block
-                        algorithm.Write(dataReader.CurrentTimestamp, points);
+                        dataWriter.Write(dataReader.CurrentTimestamp, points);
                     }
                     catch (Exception ex)
                     {
@@ -326,8 +326,6 @@ namespace BenchmarkBerkeleyDB
 
                 DisplayStats();
             }
-
-
 
             SetGoButtonEnabledState(true);
         }
