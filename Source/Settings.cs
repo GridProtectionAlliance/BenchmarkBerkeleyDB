@@ -177,6 +177,14 @@ namespace BenchmarkBerkeleyDB
         public int MessageInterval { get; set; }
 
         /// <summary>
+        /// Gets or sets flag that determines if data will be read back after writing.
+        /// </summary>
+        [TypeConvertedValueExpression("Form.checkBoxReadBack.Checked")]
+        [Description("Flag that determines if data will be read back after writing.")]
+        [UserScopedSetting]
+        public bool ReadBack { get; set; }
+
+        /// <summary>
         /// Gets or sets flag that determines if logging should be enabled.
         /// </summary>
         [TypeConvertedValueExpression("Form.checkBoxEnableLogging.Checked")]
@@ -209,7 +217,7 @@ namespace BenchmarkBerkeleyDB
         //public DataSource Source { get; set; }
 
         /// <summary>
-        /// Gets or sets selected point list or filter expression for historian read.
+        /// Gets or sets whether to read from the openHistorian.
         /// </summary>
         [TypeConvertedValueExpression("Form.radioButtonSourceHistorian.Checked")]
         [Description("Path where the reports will be written.")]
@@ -217,7 +225,7 @@ namespace BenchmarkBerkeleyDB
         public bool ReadFromOpenHistorian { get; set; }
 
         /// <summary>
-        /// Gets or sets selected point list or filter expression for historian read.
+        /// Gets or sets whether to read from a csv file.
         /// </summary>
         [TypeConvertedValueExpression("Form.radioButtonSourceCsv.Checked")]
         [Description("Path where the reports will be written.")]
@@ -225,7 +233,7 @@ namespace BenchmarkBerkeleyDB
         public bool ReadFromCsv { get; set; }
 
         /// <summary>
-        /// Gets or sets selected point list or filter expression for historian read.
+        /// Gets or sets the directory where the historian will be stored.
         /// </summary>
         [TypeConvertedValueExpression("Form.textBoxHistorianArchive.Text")]
         [Description("Path where the reports will be written.")]
@@ -233,12 +241,20 @@ namespace BenchmarkBerkeleyDB
         public string HistorianArchive { get; set; }
 
         /// <summary>
-        /// Gets or sets selected point list or filter expression for historian read.
+        /// Gets or sets the name of the historian.
         /// </summary>
         [TypeConvertedValueExpression("Form.textBoxHistorianName.Text")]
-        [Description("Path where the reports will be written.")]
+        [Description("Name of the historian.")]
         [UserScopedSetting]
         public string HistorianName { get; set; }
+
+        /// <summary>
+        /// Gets or sets data port for historian connection.
+        /// </summary>
+        [TypeConvertedValueExpression("Form.maskedTextBoxDestinationHistorianDataPort.Text")]
+        [Description("Data port for historian connection.")]
+        [UserScopedSetting]
+        public int DestinationHistorianDataPort { get; set; }
 
         ///// <summary>
         ///// Gets or sets whether to write to the openHistorian or Berkeley DB.
@@ -249,20 +265,28 @@ namespace BenchmarkBerkeleyDB
         //public DestinationHistorian Destination { get; set; }
 
         /// <summary>
-        /// Gets or sets selected point list or filter expression for historian read.
+        /// Gets or sets whether to write to openHistorian.
         /// </summary>
         [TypeConvertedValueExpression("Form.radioButtonDestinationHistorian.Checked")]
-        [Description("Path where the reports will be written.")]
+        [Description("Write to an openHistorian instance.")]
         [UserScopedSetting]
         public bool WriteToOpenHistorian { get; set; }
 
         /// <summary>
-        /// Gets or sets selected point list or filter expression for historian read.
+        /// Gets or sets whether to write to BerkeleyDB.
         /// </summary>
         [TypeConvertedValueExpression("Form.radioButtonDestinationBerkeley.Checked")]
-        [Description("Path where the reports will be written.")]
+        [Description("Write to Berkeley DB")]
         [UserScopedSetting]
         public bool WriteToBerkeleyDB { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether to write to nothing.
+        /// </summary>
+        [TypeConvertedValueExpression("Form.radioButtonDestinationNone.Checked")]
+        [Description("Write to no Historian.")]
+        [UserScopedSetting]
+        public bool WriteToNone { get; set; }
 
         #endregion
     }

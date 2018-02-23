@@ -2,15 +2,19 @@
 using BenchmarkBerkeleyDB.HistorianAPI.Metadata;
 using GSF;
 using GSF.Diagnostics;
+using GSF.Snap;
+using GSF.Snap.Filters;
 using GSF.TimeSeries;
 using GSF.TimeSeries.Adapters;
+using openHistorian.Net;
+using openHistorian.Snap;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static BenchmarkBerkeleyDB.BenchmarkBerkeleyDB;
+using BerkeleyDB;
 
 namespace BenchmarkBerkeleyDB
 {
@@ -24,6 +28,7 @@ namespace BenchmarkBerkeleyDB
         DateTime m_startTime;
         DateTime m_endTime;
         double m_timeRange;
+        IEnumerable<ulong> m_points;
 
         // CSV Members
         StreamReader m_reader;
@@ -32,13 +37,13 @@ namespace BenchmarkBerkeleyDB
         int m_totalLines;
 
         // Common Members
-        private DataSource m_source;
         private Settings m_settings;
         public delegate bool ReadNext(out DataPoint[] points);
-        ReadNext m_readNext;
-        DataPoint m_dataPoint;
-        DataPoint[] m_dataPoints;
-        Dictionary<ulong, DataPoint> m_dataBlock;
+        private ReadNext m_readNext;
+        private DataPoint m_dataPoint;
+        private DataPoint[] m_dataPoints;
+        private Dictionary<ulong, DataPoint> m_dataBlock;
+        private bool m_disposed;
 
         #endregion
 
@@ -59,13 +64,13 @@ namespace BenchmarkBerkeleyDB
                 m_endTime = m_endTime.ToUniversalTime();
                 m_timeRange = (m_endTime - m_startTime).TotalSeconds;
                 
-                IEnumerable<ulong> pointIDList = GetMetadata().Select(md => md.PointID);
+                m_points = GetMetadata().Select(md => md.PointID);
 
-                m_historianClient = new SnapDBClient(m_settings.HostAddress, m_settings.DataPort, m_settings.InstanceName, m_startTime, m_endTime, m_settings.FrameRate, pointIDList);
+                m_historianClient = new SnapDBClient(m_settings.HostAddress, m_settings.DataPort, m_settings.InstanceName, m_startTime, m_endTime, m_settings.FrameRate, m_points);
                 
                 m_dataBlock = new Dictionary<ulong, DataPoint>();
                 m_dataPoint = new DataPoint();
-                PointCount = pointIDList.Count();
+                PointCount = m_points.Count();
                 m_readNext = ReadNextHistorianBlock;
 
                 if (!m_historianClient.ReadNext(m_dataPoint)) //Scan to first record in time range
@@ -121,8 +126,30 @@ namespace BenchmarkBerkeleyDB
 
         public void Dispose()
         {
-            m_historianClient.Dispose();
-            throw new NotImplementedException();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (!m_disposed)
+            {
+                try
+                {
+                    if (disposing)
+                    {
+                        if (m_settings.ReadFromOpenHistorian)
+                            m_historianClient.Dispose();
+
+                        else if (m_settings.ReadFromCsv)
+                            m_reader.Dispose();
+                    }
+                }
+                finally
+                {
+                    m_disposed = true; // Prevent duplicate dispose
+                }
+            }
         }
 
         public bool ReadNextHistorianBlock(out DataPoint[] points)
@@ -207,7 +234,7 @@ namespace BenchmarkBerkeleyDB
                     m_dataPoints[i - 1].Timestamp = (ulong)CurrentTimestamp.Ticks;
                     m_dataPoints[i - 1].PointID = m_indexToPointIDLookup[i];
                     m_dataPoints[i - 1].ValueAsSingle = 0;
-                    if (float.TryParse(values[i - 1], out value))
+                    if (float.TryParse(values[i], out value))
                         m_dataPoints[i - 1].ValueAsSingle = value;
                 }
 
@@ -218,6 +245,60 @@ namespace BenchmarkBerkeleyDB
 
             points = null;
             return false;
+        }
+
+        public Ticks ReadBackHistorianData(HistorianIArchive archive)
+        {
+            IEnumerable<ulong> points = m_points == null ? m_indexToPointIDLookup : m_points;
+
+            if (points == null)
+            {
+                ShowMessage("Point list not initialized");
+                return new Ticks(0);
+            }
+
+            int count = 0;
+            Ticks totalReadBackTime = 0;
+            Ticks readBackTimer;
+            HistorianKey key = new HistorianKey();
+            HistorianValue value = new HistorianValue();
+            TreeStream<HistorianKey, HistorianValue> m_stream;
+
+            SeekFilterBase<HistorianKey> timeFilter = TimestampSeekFilter.CreateFromRange<HistorianKey>(DataPoint.RoundTimestamp(m_settings.StartTime, m_settings.FrameRate), DataPoint.RoundTimestamp(m_settings.EndTime, m_settings.FrameRate));
+            MatchFilterBase<HistorianKey, HistorianValue> pointFilter = PointIdMatchFilter.CreateFromList<HistorianKey, HistorianValue>(points);
+
+
+            m_stream = archive.ClientDatabase.Read(GSF.Snap.Services.Reader.SortedTreeEngineReaderOptions.Default, timeFilter, pointFilter);
+
+            readBackTimer = DateTime.UtcNow;
+            while (m_stream.Read(key, value))
+                count++;
+            totalReadBackTime += DateTime.UtcNow.Ticks - readBackTimer;
+
+            return totalReadBackTime; 
+        }
+
+        public Ticks ReadBackBerkeleyDBData(BTreeDatabase database)
+        {
+            BTreeCursor cursor;
+            int count = 0;
+            float value;
+            cursor = database.Cursor();
+
+            DateTime startTime = DateTime.UtcNow;
+            MultipleKeyDatabaseEntry pairs;
+            while (cursor.MoveNextMultipleKey())
+            {
+                pairs = cursor.CurrentMultipleKey;
+
+                foreach (KeyValuePair<DatabaseEntry, DatabaseEntry> p in pairs)
+                {
+                    value = BitConverter.ToUInt64(p.Value.Data, 0);
+                    count++;
+                }
+            }
+
+            return (DateTime.UtcNow - startTime);
         }
 
         #region [ Private Helper Functions ]

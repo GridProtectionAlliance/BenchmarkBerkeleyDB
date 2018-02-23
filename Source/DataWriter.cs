@@ -16,6 +16,7 @@ using System.Threading;
 using GSF.Snap.Services;
 using openHistorian.Snap;
 using openHistorian.Net;
+using GSF.Snap.Filters;
 
 namespace BenchmarkBerkeleyDB
 {
@@ -42,6 +43,7 @@ namespace BenchmarkBerkeleyDB
 
         private bool m_disposed;
 
+        DatabaseEnvironment m_env;
         private DatabaseEntry m_berkeleyDbKey;
         private DatabaseEntry m_berkeleyDbValue;
         private KeyValuePair<DatabaseEntry, DatabaseEntry>[] m_berkeleyDbPointList;
@@ -60,7 +62,8 @@ namespace BenchmarkBerkeleyDB
             m_settings = settings;
             if (m_settings.WriteToOpenHistorian) // Initialize OH instance
             {
-                HistorianServerDatabaseConfig archiveInfo = new HistorianServerDatabaseConfig(settings.HistorianName, settings.HistorianArchive, true)
+                string historianName = "DestinationHistorian";
+                HistorianServerDatabaseConfig archiveInfo = new HistorianServerDatabaseConfig(historianName, settings.HistorianArchive, true)
                 {
                     TargetFileSize = (long)(1 * SI.Giga), // Just because
                     DirectoryMethod = ArchiveDirectoryMethod.TopDirectoryOnly,
@@ -69,8 +72,8 @@ namespace BenchmarkBerkeleyDB
                     CacheFlushInterval = 1000 // Largest available value
                 };
 
-                m_historianServer = new HistorianServer(archiveInfo, 38406);
-                m_historianArchive = m_historianServer[settings.HistorianName];
+                m_historianServer = new HistorianServer(archiveInfo, m_settings.DestinationHistorianDataPort);
+                m_historianArchive = m_historianServer[historianName];
                 m_key = new HistorianKey();
                 m_value = new HistorianValue();
             }
@@ -81,6 +84,8 @@ namespace BenchmarkBerkeleyDB
                     BTreeCompare = BerkeleyDBKeyComparison,
                     Creation = CreatePolicy.IF_NEEDED
                 };
+
+                //m_berkeleyDb = BTreeDatabase.Open(":memory:", m_berkeleyDbCfg);
                 m_berkeleyDb = BTreeDatabase.Open(Path.Combine(settings.HistorianArchive, settings.HistorianName), m_berkeleyDbCfg);
 
                 m_berkeleyDbKey = new DatabaseEntry();
@@ -125,6 +130,22 @@ namespace BenchmarkBerkeleyDB
             {
                 // Cache meta-data in case algorithm needs it
                 m_metadata = value;
+            }
+        }
+
+        public HistorianIArchive HistorianArchive
+        {
+            get
+            {
+                return m_historianArchive;
+            }
+        }
+
+        public BTreeDatabase BerkeleyDBDatabase
+        {
+            get
+            {
+                return m_berkeleyDb;
             }
         }
 
@@ -188,7 +209,7 @@ namespace BenchmarkBerkeleyDB
                 }
             }
 
-            else if (m_settings.WriteToBerkeleyDB) // Write to Berkeley DB
+            if (m_settings.WriteToBerkeleyDB) // Write to Berkeley DB
             {
                 //// Create a new pointList each time *slow
                 //KeyValuePair<DatabaseEntry, DatabaseEntry>[] pointList = new KeyValuePair<DatabaseEntry, DatabaseEntry>[dataBlock.Length];
@@ -224,29 +245,37 @@ namespace BenchmarkBerkeleyDB
         /// <summary>
         /// Read back the database created by the algorithm and time the operation
         /// </summary>
-        public void ReadDb()
+        public void ReadBackData()
         {
-            BTreeCursor cursor;
-            int count = 0;
-            DateTime startTime = DateTime.Now;
-            float value;
-
-            cursor = m_berkeleyDb.Cursor();
-
-            while (cursor.MoveNextMultipleKey())
+            if (m_settings.WriteToOpenHistorian)
             {
-                MultipleKeyDatabaseEntry pairs = cursor.CurrentMultipleKey;
+                SeekFilterBase<HistorianKey> timeFilter = TimestampSeekFilter.CreateFromRange<HistorianKey>(DataPoint.RoundTimestamp(m_settings.StartTime, m_settings.FrameRate), DataPoint.RoundTimestamp(m_settings.EndTime, m_settings.FrameRate));
 
-                foreach (KeyValuePair<DatabaseEntry, DatabaseEntry> p in pairs)
-                {
-                    value = BitConverter.ToUInt64(p.Value.Data, 0);
-                    count++;
-                }
+                //m_historianArchive.ClientDatabase.Read(GSF.Snap.Services.Reader.SortedTreeEngineReaderOptions.Default,timeFilter, )
             }
 
-            double seconds = (DateTime.Now - startTime).TotalSeconds;
+            else if (m_settings.WriteToBerkeleyDB)
+            {
+                BTreeCursor cursor;
+                int count = 0;
+                DateTime startTime = DateTime.Now;
+                float value;
 
-            ShowMessage($"{count} points read in {seconds} seconds. Averaging {(int)Math.Round(count / seconds)} points per second.");
+                cursor = m_berkeleyDb.Cursor();
+
+                while (cursor.MoveNextMultipleKey())
+                {
+                    MultipleKeyDatabaseEntry pairs = cursor.CurrentMultipleKey;
+
+                    foreach (KeyValuePair<DatabaseEntry, DatabaseEntry> p in pairs)
+                    {
+                        value = BitConverter.ToUInt64(p.Value.Data, 0);
+                        count++;
+                    }
+                }
+
+                double seconds = (DateTime.Now - startTime).TotalSeconds;
+            }
         }
 
         /// <summary>

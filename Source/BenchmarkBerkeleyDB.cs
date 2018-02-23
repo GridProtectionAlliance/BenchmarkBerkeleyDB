@@ -180,6 +180,11 @@ namespace BenchmarkBerkeleyDB
             groupBoxSourceHistorian.Enabled = radioButtonSourceHistorian.Checked;
             groupBoxHistorianSettings.Enabled = radioButtonSourceHistorian.Checked;
             groupBoxCsvSettings.Enabled = radioButtonSourceCsv.Checked;
+
+            textBoxHistorianArchive.Enabled = radioButtonDestinationBerkeley.Checked || radioButtonDestinationHistorian.Checked;
+            buttonBrowseHistorianArchive.Enabled = radioButtonDestinationBerkeley.Checked || radioButtonDestinationHistorian.Checked;
+            textBoxHistorianName.Enabled = radioButtonDestinationBerkeley.Checked;
+            maskedTextBoxDestinationHistorianDataPort.Enabled = radioButtonDestinationHistorian.Checked;
         }
 
         private void ShowUpdateMessage(string message)
@@ -271,45 +276,47 @@ namespace BenchmarkBerkeleyDB
             double timeRange = (m_settings.EndTime - m_settings.StartTime).TotalSeconds;
             long receivedPoints = 0;
             long processedDataBlocks = 0;
-            Ticks operationTime;
-            Ticks dataRetrievalTime;
-            Ticks dataWriteTime;
-            Ticks dataReadBackTime;
-            Ticks operationStartTime;
-            DataReader dataReader;
-            IEnumerable<ulong> records;
+            Ticks totalRetrievalTime = 0;
+            Ticks totalWriteTime = 0;
+            Ticks totalReadBackTime = 0;
+            Ticks largeOperationTimer;
+            Ticks smallOperationTimer;
 
-            dataReader = new DataReader(m_settings, ShowUpdateMessage, m_log);
-            DataPoint[] points = new DataPoint[dataReader.PointCount];
-
-            using (DataWriter dataWriter = new DataWriter(m_settings, dataReader.PointCount))
+            using (DataReader reader = new DataReader(m_settings, ShowUpdateMessage, m_log))
+            using (DataWriter dataWriter = new DataWriter(m_settings, reader.PointCount))
             {
+                DataPoint[] points = new DataPoint[reader.PointCount];
                 dataWriter.ShowMessage = ShowUpdateMessage;
-
                 ShowUpdateMessage(">>> Starting archive read...");
 
                 // Start historian data read
-                operationStartTime = DateTime.UtcNow.Ticks;
-
-                while (!m_formClosing && dataReader.Read(out points))
+                largeOperationTimer = DateTime.UtcNow;
+                while (!m_formClosing)
                 {
-                    receivedPoints += points.Length;
+                    // Time reading operation
+                    smallOperationTimer = DateTime.UtcNow;
+                    if (!reader.Read(out points))
+                        break;
+                    totalRetrievalTime += (DateTime.UtcNow.Ticks - smallOperationTimer);
 
+                    receivedPoints += points.Length;
                     if (++processedDataBlocks % m_settings.MessageInterval == 0)
                     {
-                        ShowUpdateMessage($"{Environment.NewLine}{receivedPoints:N0} points read so far averaging {receivedPoints / (DateTime.UtcNow.Ticks - operationStartTime).ToSeconds():N0} points per second.");
-                        UpdateProgressBar(dataReader.PercentComplete);
+                        ShowUpdateMessage($"{Environment.NewLine}{receivedPoints:N0} points processed so far averaging {receivedPoints / (DateTime.UtcNow.Ticks - largeOperationTimer).ToSeconds():N0} points per second.");
+                        UpdateProgressBar(reader.PercentComplete);
                     }
 
                     try
                     {
-                        // Analyze data block
-                        dataWriter.Write(dataReader.CurrentTimestamp, points);
+                        // Time writing operation
+                        smallOperationTimer = DateTime.UtcNow;
+                        dataWriter.Write(reader.CurrentTimestamp, points); // Write data block
+                        totalWriteTime += DateTime.UtcNow.Ticks - smallOperationTimer;
                     }
                     catch (Exception ex)
                     {
-                        ShowUpdateMessage($"ERROR: Algorithm exception: {ex.Message}");
-                        m_log.Publish(MessageLevel.Error, "AlgorithmError", "Failed while processing data", exception: ex);
+                        ShowUpdateMessage($"ERROR: DataWriter exception: {ex.Message}");
+                        m_log.Publish(MessageLevel.Error, "DataWriterError", "Failed while processing data", exception: ex);
                     }
                 }
 
@@ -322,17 +329,29 @@ namespace BenchmarkBerkeleyDB
                 {
                     ShowUpdateMessage("*** Historian Read Complete ***");
                     UpdateProgressBar(100);
+
+                    if (m_settings.ReadBack)
+                    {
+                        if (m_settings.WriteToOpenHistorian)
+                            totalReadBackTime = reader.ReadBackHistorianData(dataWriter.HistorianArchive);
+                        if (m_settings.WriteToBerkeleyDB)
+                            totalReadBackTime = reader.ReadBackBerkeleyDBData(dataWriter.BerkeleyDBDatabase);
+                    }
+
+                    DisplayStats(totalRetrievalTime, totalWriteTime, totalReadBackTime, receivedPoints);
+
                 }
 
-                DisplayStats();
             }
 
             SetGoButtonEnabledState(true);
         }
 
-        private void DisplayStats()
+        private void DisplayStats(Ticks readTime, Ticks writeTime, Ticks readBackTime, long receivedPoints)
         {
-
+            ShowUpdateMessage($"Total time spent reading: {readTime.ToSeconds()} seconds{(readTime.ToSeconds() != 0 ? $", averaging {receivedPoints / readTime.ToSeconds():N0} points per second" : "")}");
+            ShowUpdateMessage($"Total time spent writing: {writeTime.ToSeconds()} seconds{(writeTime.ToSeconds() != 0 ? $", averaging {receivedPoints / writeTime.ToSeconds():N0} points per second" : "")}");
+            ShowUpdateMessage($"Total time spent reading back data: {readBackTime.ToSeconds()} seconds{(readBackTime.ToSeconds() != 0 ? $", averaging {receivedPoints / readBackTime.ToSeconds():N0} points per second" : "")}");
         }
 
         #endregion
