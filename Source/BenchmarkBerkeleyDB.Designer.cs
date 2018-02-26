@@ -61,6 +61,8 @@
             this.radioButtonSourceCsv = new System.Windows.Forms.RadioButton();
             this.radioButtonSourceHistorian = new System.Windows.Forms.RadioButton();
             this.groupBoxDestination = new System.Windows.Forms.GroupBox();
+            this.maskedTextBoxDestinationHistorianDataPort = new System.Windows.Forms.MaskedTextBox();
+            this.labelDestinationHistorianDataPort = new System.Windows.Forms.Label();
             this.radioButtonDestinationNone = new System.Windows.Forms.RadioButton();
             this.radioButtonDestinationBerkeley = new System.Windows.Forms.RadioButton();
             this.radioButtonDestinationHistorian = new System.Windows.Forms.RadioButton();
@@ -76,9 +78,8 @@
             this.labelSourceHistorianInstanceName = new System.Windows.Forms.Label();
             this.groupBoxSourceHistorian = new System.Windows.Forms.GroupBox();
             this.groupBoxGeneralSettings = new System.Windows.Forms.GroupBox();
-            this.maskedTextBoxDestinationHistorianDataPort = new System.Windows.Forms.MaskedTextBox();
-            this.labelDestinationHistorianDataPort = new System.Windows.Forms.Label();
             this.checkBoxReadBack = new System.Windows.Forms.CheckBox();
+            this.checkBoxInMemoryBDB = new System.Windows.Forms.CheckBox();
             this.groupBoxMessages.SuspendLayout();
             this.groupBoxHistorianSettings.SuspendLayout();
             this.groupBoxCsvSettings.SuspendLayout();
@@ -460,6 +461,7 @@
             // 
             // groupBoxDestination
             // 
+            this.groupBoxDestination.Controls.Add(this.checkBoxInMemoryBDB);
             this.groupBoxDestination.Controls.Add(this.maskedTextBoxDestinationHistorianDataPort);
             this.groupBoxDestination.Controls.Add(this.labelDestinationHistorianDataPort);
             this.groupBoxDestination.Controls.Add(this.radioButtonDestinationNone);
@@ -476,6 +478,29 @@
             this.groupBoxDestination.TabIndex = 24;
             this.groupBoxDestination.TabStop = false;
             this.groupBoxDestination.Text = "Destination";
+            // 
+            // maskedTextBoxDestinationHistorianDataPort
+            // 
+            this.maskedTextBoxDestinationHistorianDataPort.Location = new System.Drawing.Point(439, 51);
+            this.maskedTextBoxDestinationHistorianDataPort.Margin = new System.Windows.Forms.Padding(2);
+            this.maskedTextBoxDestinationHistorianDataPort.Mask = "00000";
+            this.maskedTextBoxDestinationHistorianDataPort.Name = "maskedTextBoxDestinationHistorianDataPort";
+            this.maskedTextBoxDestinationHistorianDataPort.Size = new System.Drawing.Size(41, 20);
+            this.maskedTextBoxDestinationHistorianDataPort.TabIndex = 24;
+            this.maskedTextBoxDestinationHistorianDataPort.Text = "38403";
+            this.maskedTextBoxDestinationHistorianDataPort.ValidatingType = typeof(int);
+            this.maskedTextBoxDestinationHistorianDataPort.TextChanged += new System.EventHandler(this.FormElementChanged);
+            // 
+            // labelDestinationHistorianDataPort
+            // 
+            this.labelDestinationHistorianDataPort.AutoSize = true;
+            this.labelDestinationHistorianDataPort.Location = new System.Drawing.Point(380, 54);
+            this.labelDestinationHistorianDataPort.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.labelDestinationHistorianDataPort.Name = "labelDestinationHistorianDataPort";
+            this.labelDestinationHistorianDataPort.Size = new System.Drawing.Size(55, 13);
+            this.labelDestinationHistorianDataPort.TabIndex = 23;
+            this.labelDestinationHistorianDataPort.Text = "Data Port:";
+            this.labelDestinationHistorianDataPort.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // radioButtonDestinationNone
             // 
@@ -528,7 +553,7 @@
             // 
             this.textBoxHistorianName.Location = new System.Drawing.Point(89, 51);
             this.textBoxHistorianName.Name = "textBoxHistorianName";
-            this.textBoxHistorianName.Size = new System.Drawing.Size(286, 20);
+            this.textBoxHistorianName.Size = new System.Drawing.Size(177, 20);
             this.textBoxHistorianName.TabIndex = 19;
             this.textBoxHistorianName.Text = "Berkeley.db";
             this.textBoxHistorianName.TextChanged += new System.EventHandler(this.FormElementChanged);
@@ -653,29 +678,6 @@
             this.groupBoxGeneralSettings.TabStop = false;
             this.groupBoxGeneralSettings.Text = "General Settings";
             // 
-            // maskedTextBoxDestinationHistorianDataPort
-            // 
-            this.maskedTextBoxDestinationHistorianDataPort.Location = new System.Drawing.Point(439, 51);
-            this.maskedTextBoxDestinationHistorianDataPort.Margin = new System.Windows.Forms.Padding(2);
-            this.maskedTextBoxDestinationHistorianDataPort.Mask = "00000";
-            this.maskedTextBoxDestinationHistorianDataPort.Name = "maskedTextBoxDestinationHistorianDataPort";
-            this.maskedTextBoxDestinationHistorianDataPort.Size = new System.Drawing.Size(41, 20);
-            this.maskedTextBoxDestinationHistorianDataPort.TabIndex = 24;
-            this.maskedTextBoxDestinationHistorianDataPort.Text = "38403";
-            this.maskedTextBoxDestinationHistorianDataPort.ValidatingType = typeof(int);
-            this.maskedTextBoxDestinationHistorianDataPort.TextChanged += new System.EventHandler(this.FormElementChanged);
-            // 
-            // labelDestinationHistorianDataPort
-            // 
-            this.labelDestinationHistorianDataPort.AutoSize = true;
-            this.labelDestinationHistorianDataPort.Location = new System.Drawing.Point(380, 54);
-            this.labelDestinationHistorianDataPort.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            this.labelDestinationHistorianDataPort.Name = "labelDestinationHistorianDataPort";
-            this.labelDestinationHistorianDataPort.Size = new System.Drawing.Size(55, 13);
-            this.labelDestinationHistorianDataPort.TabIndex = 23;
-            this.labelDestinationHistorianDataPort.Text = "Data Port:";
-            this.labelDestinationHistorianDataPort.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-            // 
             // checkBoxReadBack
             // 
             this.checkBoxReadBack.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -690,6 +692,21 @@
             this.checkBoxReadBack.Text = "Read back data";
             this.checkBoxReadBack.UseVisualStyleBackColor = true;
             this.checkBoxReadBack.CheckedChanged += new System.EventHandler(this.FormElementChanged);
+            // 
+            // checkBoxInMemoryBDB
+            // 
+            this.checkBoxInMemoryBDB.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.checkBoxInMemoryBDB.AutoSize = true;
+            this.checkBoxInMemoryBDB.Checked = true;
+            this.checkBoxInMemoryBDB.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkBoxInMemoryBDB.Location = new System.Drawing.Point(284, 53);
+            this.checkBoxInMemoryBDB.Margin = new System.Windows.Forms.Padding(2);
+            this.checkBoxInMemoryBDB.Name = "checkBoxInMemoryBDB";
+            this.checkBoxInMemoryBDB.Size = new System.Drawing.Size(92, 17);
+            this.checkBoxInMemoryBDB.TabIndex = 25;
+            this.checkBoxInMemoryBDB.Text = "In-memory DB";
+            this.checkBoxInMemoryBDB.UseVisualStyleBackColor = true;
+            this.checkBoxInMemoryBDB.CheckedChanged += new System.EventHandler(this.FormElementChanged);
             // 
             // BenchmarkBerkeleyDB
             // 
@@ -782,5 +799,6 @@
         public System.Windows.Forms.MaskedTextBox maskedTextBoxDestinationHistorianDataPort;
         private System.Windows.Forms.Label labelDestinationHistorianDataPort;
         public System.Windows.Forms.CheckBox checkBoxReadBack;
+        public System.Windows.Forms.CheckBox checkBoxInMemoryBDB;
     }
 }

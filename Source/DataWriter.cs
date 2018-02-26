@@ -82,12 +82,17 @@ namespace BenchmarkBerkeleyDB
                 m_berkeleyDbCfg = new BTreeDatabaseConfig()
                 {
                     BTreeCompare = BerkeleyDBKeyComparison,
+                    CacheSize = new CacheInfo(10, 0, 1),
+                    PageSize = 65536,
                     Creation = CreatePolicy.IF_NEEDED
                 };
 
-                //m_berkeleyDb = BTreeDatabase.Open(":memory:", m_berkeleyDbCfg);
-                m_berkeleyDb = BTreeDatabase.Open(Path.Combine(settings.HistorianArchive, settings.HistorianName), m_berkeleyDbCfg);
+                string databasePath = null;
+                if (!m_settings.InMemoryBerkeleyDB)
+                    databasePath = Path.Combine(settings.HistorianArchive, settings.HistorianName);
 
+                m_berkeleyDb = BTreeDatabase.Open(databasePath, m_berkeleyDbCfg);
+                
                 m_berkeleyDbKey = new DatabaseEntry();
                 m_berkeleyDbValue = new DatabaseEntry();
 
@@ -238,43 +243,6 @@ namespace BenchmarkBerkeleyDB
                 });
 
                 m_berkeleyDb.Put(new MultipleKeyDatabaseEntry(m_berkeleyDbPointList.Take(dataBlock.Length), false));
-            }
-        }
-
-
-        /// <summary>
-        /// Read back the database created by the algorithm and time the operation
-        /// </summary>
-        public void ReadBackData()
-        {
-            if (m_settings.WriteToOpenHistorian)
-            {
-                SeekFilterBase<HistorianKey> timeFilter = TimestampSeekFilter.CreateFromRange<HistorianKey>(DataPoint.RoundTimestamp(m_settings.StartTime, m_settings.FrameRate), DataPoint.RoundTimestamp(m_settings.EndTime, m_settings.FrameRate));
-
-                //m_historianArchive.ClientDatabase.Read(GSF.Snap.Services.Reader.SortedTreeEngineReaderOptions.Default,timeFilter, )
-            }
-
-            else if (m_settings.WriteToBerkeleyDB)
-            {
-                BTreeCursor cursor;
-                int count = 0;
-                DateTime startTime = DateTime.Now;
-                float value;
-
-                cursor = m_berkeleyDb.Cursor();
-
-                while (cursor.MoveNextMultipleKey())
-                {
-                    MultipleKeyDatabaseEntry pairs = cursor.CurrentMultipleKey;
-
-                    foreach (KeyValuePair<DatabaseEntry, DatabaseEntry> p in pairs)
-                    {
-                        value = BitConverter.ToUInt64(p.Value.Data, 0);
-                        count++;
-                    }
-                }
-
-                double seconds = (DateTime.Now - startTime).TotalSeconds;
             }
         }
 

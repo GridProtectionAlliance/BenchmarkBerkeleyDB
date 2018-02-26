@@ -21,7 +21,7 @@ namespace BenchmarkBerkeleyDB
     class DataReader : IDisposable
     {
         #region [ Members ]
-        
+
         // Historian Members
         private SnapDBClient m_snapClient;
         SnapDBClient m_historianClient;
@@ -35,6 +35,8 @@ namespace BenchmarkBerkeleyDB
         private ulong[] m_indexToPointIDLookup;
         int m_currentLine;
         int m_totalLines;
+        DateTime m_csvStartTime;
+        DateTime m_csvEndTime;
 
         // Common Members
         private Settings m_settings;
@@ -63,11 +65,11 @@ namespace BenchmarkBerkeleyDB
                 m_startTime = m_startTime.ToUniversalTime();
                 m_endTime = m_endTime.ToUniversalTime();
                 m_timeRange = (m_endTime - m_startTime).TotalSeconds;
-                
+
                 m_points = GetMetadata().Select(md => md.PointID);
 
                 m_historianClient = new SnapDBClient(m_settings.HostAddress, m_settings.DataPort, m_settings.InstanceName, m_startTime, m_endTime, m_settings.FrameRate, m_points);
-                
+
                 m_dataBlock = new Dictionary<ulong, DataPoint>();
                 m_dataPoint = new DataPoint();
                 PointCount = m_points.Count();
@@ -89,7 +91,12 @@ namespace BenchmarkBerkeleyDB
                 string[] headers = headerLine.Split(',');
 
                 m_currentLine = 0;
-                m_totalLines = File.ReadLines(m_settings.CsvSourcePath).Count();
+
+                IEnumerable<string> dataFile = File.ReadLines(m_settings.CsvSourcePath);
+                m_totalLines = dataFile.Count();
+                m_csvStartTime = DateTime.Parse(dataFile.ElementAt(1).Split(',')[0]);
+                m_csvEndTime = DateTime.Parse(dataFile.ElementAt(m_totalLines - 1).Split(',')[0]);
+
 
                 m_indexToPointIDLookup = new ulong[headers.Length];
                 for (int i = 1; i < headers.Length; i++)
@@ -184,7 +191,7 @@ namespace BenchmarkBerkeleyDB
                     }
                 }
                 while (timeComparison == 0);
-                
+
                 // Finished with data read
                 if (!readSuccess)
                 {
@@ -249,7 +256,21 @@ namespace BenchmarkBerkeleyDB
 
         public Ticks ReadBackHistorianData(HistorianIArchive archive)
         {
-            IEnumerable<ulong> points = m_points == null ? m_indexToPointIDLookup : m_points;
+            IEnumerable<ulong> points;
+            DateTime startTime, endTime;
+
+            if (m_settings.ReadFromCsv)
+            {
+                points = m_indexToPointIDLookup.Skip(1); // First value is always 0 because the timestamp is the first column
+                startTime = m_csvStartTime;
+                endTime = m_csvEndTime;
+            }
+            else
+            {
+                points = m_points;
+                startTime = m_settings.StartTime;
+                endTime = m_settings.EndTime;
+            }
 
             if (points == null)
             {
@@ -264,7 +285,7 @@ namespace BenchmarkBerkeleyDB
             HistorianValue value = new HistorianValue();
             TreeStream<HistorianKey, HistorianValue> m_stream;
 
-            SeekFilterBase<HistorianKey> timeFilter = TimestampSeekFilter.CreateFromRange<HistorianKey>(DataPoint.RoundTimestamp(m_settings.StartTime, m_settings.FrameRate), DataPoint.RoundTimestamp(m_settings.EndTime, m_settings.FrameRate));
+            SeekFilterBase<HistorianKey> timeFilter = TimestampSeekFilter.CreateFromRange<HistorianKey>(DataPoint.RoundTimestamp(startTime, m_settings.FrameRate), DataPoint.RoundTimestamp(endTime, m_settings.FrameRate));
             MatchFilterBase<HistorianKey, HistorianValue> pointFilter = PointIdMatchFilter.CreateFromList<HistorianKey, HistorianValue>(points);
 
 
@@ -275,7 +296,7 @@ namespace BenchmarkBerkeleyDB
                 count++;
             totalReadBackTime += DateTime.UtcNow.Ticks - readBackTimer;
 
-            return totalReadBackTime; 
+            return totalReadBackTime;
         }
 
         public Ticks ReadBackBerkeleyDBData(BTreeDatabase database)

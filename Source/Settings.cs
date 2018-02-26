@@ -256,6 +256,14 @@ namespace BenchmarkBerkeleyDB
         [UserScopedSetting]
         public int DestinationHistorianDataPort { get; set; }
 
+        /// <summary>
+        /// Gets or sets Whether to use an in-memory BerkeleyDB
+        /// </summary>
+        [TypeConvertedValueExpression("Form.checkBoxInMemoryBDB.Checked")]
+        [Description("Use an in-memory Berkeley DB")]
+        [UserScopedSetting]
+        public bool InMemoryBerkeleyDB { get; set; }
+
         ///// <summary>
         ///// Gets or sets whether to write to the openHistorian or Berkeley DB.
         ///// </summary>

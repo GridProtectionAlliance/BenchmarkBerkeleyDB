@@ -181,10 +181,11 @@ namespace BenchmarkBerkeleyDB
             groupBoxHistorianSettings.Enabled = radioButtonSourceHistorian.Checked;
             groupBoxCsvSettings.Enabled = radioButtonSourceCsv.Checked;
 
-            textBoxHistorianArchive.Enabled = radioButtonDestinationBerkeley.Checked || radioButtonDestinationHistorian.Checked;
-            buttonBrowseHistorianArchive.Enabled = radioButtonDestinationBerkeley.Checked || radioButtonDestinationHistorian.Checked;
-            textBoxHistorianName.Enabled = radioButtonDestinationBerkeley.Checked;
+            textBoxHistorianArchive.Enabled = (radioButtonDestinationBerkeley.Checked && !checkBoxInMemoryBDB.Checked) || radioButtonDestinationHistorian.Checked;
+            textBoxHistorianName.Enabled = radioButtonDestinationBerkeley.Checked && !checkBoxInMemoryBDB.Checked;
+            buttonBrowseHistorianArchive.Enabled = (radioButtonDestinationBerkeley.Checked && !checkBoxInMemoryBDB.Checked) || radioButtonDestinationHistorian.Checked;
             maskedTextBoxDestinationHistorianDataPort.Enabled = radioButtonDestinationHistorian.Checked;
+            checkBoxInMemoryBDB.Enabled = radioButtonDestinationBerkeley.Checked;
         }
 
         private void ShowUpdateMessage(string message)
