@@ -43,15 +43,17 @@ namespace BenchmarkBerkeleyDB
 
         private bool m_disposed;
 
+        // BerkeleyDB Members
         DatabaseEnvironment m_env;
         private DatabaseEntry m_berkeleyDbKey;
         private DatabaseEntry m_berkeleyDbValue;
         private KeyValuePair<DatabaseEntry, DatabaseEntry>[] m_berkeleyDbPointList;
 
+        // openHistorian Members
         private HistorianServer m_historianServer;
         private HistorianIArchive m_historianArchive;
-        private HistorianKey m_key;
-        private HistorianValue m_value;
+        private HistorianKey m_historianKey;
+        private HistorianValue m_historianValue;
 
         #endregion
 
@@ -74,8 +76,8 @@ namespace BenchmarkBerkeleyDB
 
                 m_historianServer = new HistorianServer(archiveInfo, m_settings.DestinationHistorianDataPort);
                 m_historianArchive = m_historianServer[historianName];
-                m_key = new HistorianKey();
-                m_value = new HistorianValue();
+                m_historianKey = new HistorianKey();
+                m_historianValue = new HistorianValue();
             }
             else if (m_settings.WriteToBerkeleyDB) // Initialize BDB instance
             {
@@ -84,6 +86,7 @@ namespace BenchmarkBerkeleyDB
                     BTreeCompare = BerkeleyDBKeyComparison,
                     CacheSize = new CacheInfo(10, 0, 1),
                     PageSize = 65536,
+                    NoMMap = true,
                     Creation = CreatePolicy.IF_NEEDED
                 };
 
@@ -183,7 +186,14 @@ namespace BenchmarkBerkeleyDB
                             m_historianServer.Dispose();
 
                         else if (m_settings.WriteToBerkeleyDB)
-                            m_berkeleyDb.Close();
+                        {
+                            m_berkeleyDb.Dispose();
+                            Parallel.For(0, m_berkeleyDbPointList.Length, (i) =>
+                            {
+                                m_berkeleyDbPointList[i].Key.Dispose();
+                                m_berkeleyDbPointList[i].Value.Dispose();
+                            });
+                        }
                     }
                 }
                 finally
@@ -204,13 +214,13 @@ namespace BenchmarkBerkeleyDB
             {
                 foreach (DataPoint point in dataBlock)
                 {
-                    m_key.Timestamp = point.Timestamp;
-                    m_key.PointID = point.PointID;
+                    m_historianKey.Timestamp = point.Timestamp;
+                    m_historianKey.PointID = point.PointID;
 
-                    m_value.Value1 = point.Value;
-                    m_value.Value3 = point.Flags;
+                    m_historianValue.Value1 = point.Value;
+                    m_historianValue.Value3 = point.Flags;
 
-                    m_historianArchive.Write(m_key, m_value);
+                    m_historianArchive.Write(m_historianKey, m_historianValue);
                 }
             }
 
@@ -223,16 +233,25 @@ namespace BenchmarkBerkeleyDB
                 //                                                            new DatabaseEntry(BitConverter.GetBytes(timestamp.Ticks).Concat(BitConverter.GetBytes(dataBlock[i].PointID)).ToArray()),
                 //                                                            new DatabaseEntry(BitConverter.GetBytes(dataBlock[i].Value))));
 
-                //m_db.Put(new MultipleKeyDatabaseEntry(pointList, false));
+                //using (MultipleKeyDatabaseEntry buffer = new MultipleKeyDatabaseEntry(pointList, false))
+                //{
+                //    m_berkeleyDb.Put(buffer);
+                //}
+
+                //Parallel.For(0, pointList.Length, (i) => 
+                //{
+                //    pointList[i].Key.Dispose();
+                //    pointList[i].Value.Dispose();
+                //});
 
 
-                //// Single writes using the same key and value each time *medium
+                //// Single writes using the same key and value each time *medium speed
                 //foreach (DataPoint point in dataBlock)
                 //{
-                //    m_key.Data = BitConverter.GetBytes(timestamp.Ticks).Concat(BitConverter.GetBytes(point.PointID)).ToArray();
-                //    m_value.Data = BitConverter.GetBytes(point.Value).ToArray();
+                //    m_berkeleyDbKey.Data = BitConverter.GetBytes(timestamp.Ticks).Concat(BitConverter.GetBytes(point.PointID)).ToArray();
+                //    m_berkeleyDbValue.Data = BitConverter.GetBytes(point.Value).ToArray();
 
-                //    m_db.Put(m_key, m_value);
+                //    m_berkeleyDb.Put(m_berkeleyDbKey, m_berkeleyDbValue);
                 //}
 
                 // Bulk writes using the same pointList *fastest method found so far*
@@ -242,7 +261,10 @@ namespace BenchmarkBerkeleyDB
                     m_berkeleyDbPointList[i].Value.Data = BitConverter.GetBytes(dataBlock[i].Value);
                 });
 
-                m_berkeleyDb.Put(new MultipleKeyDatabaseEntry(m_berkeleyDbPointList.Take(dataBlock.Length), false));
+                using (MultipleKeyDatabaseEntry buffer = new MultipleKeyDatabaseEntry(m_berkeleyDbPointList.Take(dataBlock.Length), false))
+                {
+                    m_berkeleyDb.Put(buffer);
+                }
             }
         }
 

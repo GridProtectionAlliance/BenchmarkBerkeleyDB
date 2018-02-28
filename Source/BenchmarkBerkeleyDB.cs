@@ -283,10 +283,10 @@ namespace BenchmarkBerkeleyDB
             Ticks largeOperationTimer;
             Ticks smallOperationTimer;
 
-            using (DataReader reader = new DataReader(m_settings, ShowUpdateMessage, m_log))
-            using (DataWriter dataWriter = new DataWriter(m_settings, reader.PointCount))
+            using (DataReader dataReader = new DataReader(m_settings, ShowUpdateMessage, m_log))
+            using (DataWriter dataWriter = new DataWriter(m_settings, dataReader.PointCount))
             {
-                DataPoint[] points = new DataPoint[reader.PointCount];
+                DataPoint[] points = new DataPoint[dataReader.PointCount];
                 dataWriter.ShowMessage = ShowUpdateMessage;
                 ShowUpdateMessage(">>> Starting archive read...");
 
@@ -296,7 +296,7 @@ namespace BenchmarkBerkeleyDB
                 {
                     // Time reading operation
                     smallOperationTimer = DateTime.UtcNow;
-                    if (!reader.Read(out points))
+                    if (!dataReader.Read(out points))
                         break;
                     totalRetrievalTime += (DateTime.UtcNow.Ticks - smallOperationTimer);
 
@@ -304,14 +304,14 @@ namespace BenchmarkBerkeleyDB
                     if (++processedDataBlocks % m_settings.MessageInterval == 0)
                     {
                         ShowUpdateMessage($"{Environment.NewLine}{receivedPoints:N0} points processed so far averaging {receivedPoints / (DateTime.UtcNow.Ticks - largeOperationTimer).ToSeconds():N0} points per second.");
-                        UpdateProgressBar(reader.PercentComplete);
+                        UpdateProgressBar(dataReader.PercentComplete);
                     }
 
                     try
                     {
                         // Time writing operation
                         smallOperationTimer = DateTime.UtcNow;
-                        dataWriter.Write(reader.CurrentTimestamp, points); // Write data block
+                        dataWriter.Write(dataReader.CurrentTimestamp, points); // Write data block
                         totalWriteTime += DateTime.UtcNow.Ticks - smallOperationTimer;
                     }
                     catch (Exception ex)
@@ -334,9 +334,9 @@ namespace BenchmarkBerkeleyDB
                     if (m_settings.ReadBack)
                     {
                         if (m_settings.WriteToOpenHistorian)
-                            totalReadBackTime = reader.ReadBackHistorianData(dataWriter.HistorianArchive);
+                            totalReadBackTime = dataReader.ReadBackHistorianData(dataWriter.HistorianArchive);
                         if (m_settings.WriteToBerkeleyDB)
-                            totalReadBackTime = reader.ReadBackBerkeleyDBData(dataWriter.BerkeleyDBDatabase);
+                            totalReadBackTime = dataReader.ReadBackBerkeleyDBData(dataWriter.BerkeleyDBDatabase);
                     }
 
                     DisplayStats(totalRetrievalTime, totalWriteTime, totalReadBackTime, receivedPoints);

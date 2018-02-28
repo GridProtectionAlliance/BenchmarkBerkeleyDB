@@ -301,25 +301,28 @@ namespace BenchmarkBerkeleyDB
 
         public Ticks ReadBackBerkeleyDBData(BTreeDatabase database)
         {
-            BTreeCursor cursor;
-            int count = 0;
-            float value;
-            cursor = database.Cursor();
-
-            DateTime startTime = DateTime.UtcNow;
-            MultipleKeyDatabaseEntry pairs;
-            while (cursor.MoveNextMultipleKey())
+            using (BTreeCursor cursor = database.Cursor())
             {
-                pairs = cursor.CurrentMultipleKey;
+                int count = 0;
+                float value;
 
-                foreach (KeyValuePair<DatabaseEntry, DatabaseEntry> p in pairs)
+                DateTime startTime = DateTime.UtcNow;
+                while (cursor.MoveNextMultipleKey())
                 {
-                    value = BitConverter.ToUInt64(p.Value.Data, 0);
-                    count++;
+                    using (MultipleKeyDatabaseEntry pairs = cursor.CurrentMultipleKey)
+                    {
+                        foreach (KeyValuePair<DatabaseEntry, DatabaseEntry> p in pairs)
+                        {
+                            value = BitConverter.ToUInt64(p.Value.Data, 0);
+                            p.Key.Dispose();
+                            p.Value.Dispose();
+                            count++;
+                        }
+                    }
                 }
-            }
 
-            return (DateTime.UtcNow - startTime);
+                return (DateTime.UtcNow - startTime);
+            }
         }
 
         #region [ Private Helper Functions ]
