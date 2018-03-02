@@ -350,9 +350,10 @@ namespace BenchmarkBerkeleyDB
 
         private void DisplayStats(Ticks readTime, Ticks writeTime, Ticks readBackTime, long receivedPoints)
         {
-            ShowUpdateMessage($"{Environment.NewLine}Total time spent reading: {readTime.ToSeconds()} seconds{(readTime.ToSeconds() != 0 ? $", averaging {receivedPoints / readTime.ToSeconds():N0} points per second" : "")}");
-            ShowUpdateMessage($"Total time spent writing: {writeTime.ToSeconds()} seconds{(writeTime.ToSeconds() != 0 ? $", averaging {receivedPoints / writeTime.ToSeconds():N0} points per second" : "")}");
-            ShowUpdateMessage($"Total time spent reading back: {readBackTime.ToSeconds()} seconds{(readBackTime.ToSeconds() != 0 ? $", averaging {receivedPoints / readBackTime.ToSeconds():N0} points per second" : "")}");
+            ShowUpdateMessage($"{Environment.NewLine}Points processed: {receivedPoints}.");
+            ShowUpdateMessage($"Time spent reading: {readTime.ToSeconds()} seconds{(readTime.ToSeconds() != 0 ? $", averaging {receivedPoints / readTime.ToSeconds():N0} points per second" : "")}");
+            ShowUpdateMessage($"Time spent writing: {writeTime.ToSeconds()} seconds{(writeTime.ToSeconds() != 0 ? $", averaging {receivedPoints / writeTime.ToSeconds():N0} points per second" : "")}");
+            ShowUpdateMessage($"Time spent reading back: {readBackTime.ToSeconds()} seconds{(readBackTime.ToSeconds() != 0 ? $", averaging {receivedPoints / readBackTime.ToSeconds():N0} points per second" : "")}");
         }
 
         #endregion
