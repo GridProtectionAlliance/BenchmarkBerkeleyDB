@@ -23,25 +23,22 @@ namespace BenchmarkBerkeleyDB
         #region [ Members ]
 
         // Historian Members
-        private SnapDBClient m_snapClient;
-        SnapDBClient m_historianClient;
-        DateTime m_startTime;
-        DateTime m_endTime;
-        double m_timeRange;
-        IEnumerable<ulong> m_points;
+        private SnapDBClient m_historianClient;
+        private IEnumerable<ulong> m_points;
 
         // CSV Members
         StreamReader m_reader;
         private ulong[] m_indexToPointIDLookup;
-        int m_currentLine;
-        int m_totalLines;
-        DateTime m_csvStartTime;
-        DateTime m_csvEndTime;
+        private int m_currentLine;
+        private int m_totalLines;
 
         // Common Members
         private Settings m_settings;
         public delegate bool ReadNext(out DataPoint[] points);
         private ReadNext m_readNext;
+        private DateTime m_startTime;
+        private DateTime m_endTime;
+        private double m_timeRange;
         private DataPoint m_dataPoint;
         private DataPoint[] m_dataPoints;
         private Dictionary<ulong, DataPoint> m_dataBlock;
@@ -94,9 +91,9 @@ namespace BenchmarkBerkeleyDB
 
                 IEnumerable<string> dataFile = File.ReadLines(m_settings.CsvSourcePath);
                 m_totalLines = dataFile.Count();
-                m_csvStartTime = DateTime.Parse(dataFile.ElementAt(1).Split(',')[0]);
-                m_csvEndTime = DateTime.Parse(dataFile.ElementAt(m_totalLines - 1).Split(',')[0]);
-
+                m_startTime = DateTime.Parse(dataFile.ElementAt(1).Split(',')[0]);
+                m_endTime = DateTime.Parse(dataFile.ElementAt(m_totalLines - 1).Split(',')[0]);
+                m_timeRange = (m_endTime - m_startTime).TotalSeconds;
 
                 m_indexToPointIDLookup = new ulong[headers.Length];
                 for (int i = 1; i < headers.Length; i++)
@@ -254,23 +251,14 @@ namespace BenchmarkBerkeleyDB
             return false;
         }
 
-        public Ticks ReadBackHistorianData(HistorianIArchive archive)
+        public Ticks ReadBackHistorianData(HistorianIArchive archive, Action<int> updateProgressBar)
         {
             IEnumerable<ulong> points;
-            DateTime startTime, endTime;
 
             if (m_settings.ReadFromCsv)
-            {
                 points = m_indexToPointIDLookup.Skip(1); // First value is always 0 because the timestamp is the first column
-                startTime = m_csvStartTime;
-                endTime = m_csvEndTime;
-            }
             else
-            {
                 points = m_points;
-                startTime = m_settings.StartTime;
-                endTime = m_settings.EndTime;
-            }
 
             if (points == null)
             {
@@ -279,33 +267,57 @@ namespace BenchmarkBerkeleyDB
             }
 
             int count = 0;
-            Ticks totalReadBackTime = 0;
-            Ticks readBackTimer;
             HistorianKey key = new HistorianKey();
             HistorianValue value = new HistorianValue();
             TreeStream<HistorianKey, HistorianValue> m_stream;
 
-            SeekFilterBase<HistorianKey> timeFilter = TimestampSeekFilter.CreateFromRange<HistorianKey>(DataPoint.RoundTimestamp(startTime, m_settings.FrameRate), DataPoint.RoundTimestamp(endTime, m_settings.FrameRate));
+            SeekFilterBase<HistorianKey> timeFilter = TimestampSeekFilter.CreateFromRange<HistorianKey>(DataPoint.RoundTimestamp(m_startTime, m_settings.FrameRate), DataPoint.RoundTimestamp(m_endTime, m_settings.FrameRate));
             MatchFilterBase<HistorianKey, HistorianValue> pointFilter = PointIdMatchFilter.CreateFromList<HistorianKey, HistorianValue>(points);
 
 
             m_stream = archive.ClientDatabase.Read(GSF.Snap.Services.Reader.SortedTreeEngineReaderOptions.Default, timeFilter, pointFilter);
 
-            readBackTimer = DateTime.UtcNow;
-            while (m_stream.Read(key, value))
-                count++;
-            totalReadBackTime += DateTime.UtcNow.Ticks - readBackTimer;
 
-            return totalReadBackTime;
+            int messageInterval = points.Count() * m_settings.MessageInterval;
+
+            DateTime startTime = DateTime.UtcNow;
+            while (m_stream.Read(key, value))
+            {
+                count++;
+
+                if (count % messageInterval == 0)
+                {
+                    PercentComplete = (int)((1.0D - (new Ticks(m_endTime.Ticks - (long)key.Timestamp).ToSeconds() / m_timeRange)) * 100.0D);
+                    ShowMessage($"{Environment.NewLine}{count} points read back so far, averaging {(count / (DateTime.UtcNow - startTime).TotalSeconds):N0} points per second.");
+                    updateProgressBar(PercentComplete);
+                }
+            }
+
+            return DateTime.UtcNow - startTime;
         }
 
-        public Ticks ReadBackBerkeleyDBData(BTreeDatabase database)
+        public Ticks ReadBackBerkeleyDBData(BTreeDatabase database, Action<int> updateProgressBar)
         {
+            IEnumerable<ulong> points;
+            if (m_settings.ReadFromCsv)
+                points = m_indexToPointIDLookup.Skip(1); // First value is always 0 because the timestamp is the first column
+            else
+                points = m_points;
+
+            if (points == null)
+            {
+                ShowMessage("Point list not initialized");
+                return new Ticks(0);
+            }
+
+            int count = 0;
+            ulong value;
+            long timestamp;
+
+            int messageInterval = m_settings.MessageInterval * points.Count();
+
             using (BTreeCursor cursor = database.Cursor())
             {
-                int count = 0;
-                float value;
-
                 DateTime startTime = DateTime.UtcNow;
                 while (cursor.MoveNextMultipleKey())
                 {
@@ -313,10 +325,18 @@ namespace BenchmarkBerkeleyDB
                     {
                         foreach (KeyValuePair<DatabaseEntry, DatabaseEntry> p in pairs)
                         {
+                            timestamp = BitConverter.ToInt64(p.Key.Data, 0);
                             value = BitConverter.ToUInt64(p.Value.Data, 0);
                             p.Key.Dispose();
                             p.Value.Dispose();
                             count++;
+
+                            if (count % messageInterval == 0)
+                            {
+                                PercentComplete = (int)((1.0D - (new Ticks(m_endTime.Ticks - timestamp).ToSeconds() / m_timeRange)) * 100.0D);
+                                ShowMessage($"{Environment.NewLine}{count} points read back so far, averaging {(count / (DateTime.UtcNow - startTime).TotalSeconds):N0} points per second.");
+                                updateProgressBar(PercentComplete);
+                            }
                         }
                     }
                 }
